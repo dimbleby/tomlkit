@@ -34,6 +34,10 @@ from tomlkit.exceptions import ConvertError
 from tomlkit.exceptions import InvalidStringError
 
 
+# Pre-computed bare-key character set, checked per key during parsing.
+BARE = string.ascii_letters + string.digits + "-_"
+
+
 if TYPE_CHECKING:
     from typing import Protocol
 
@@ -404,9 +408,7 @@ class SingleKey(Key):
             raise TypeError("Keys must be strings")
 
         if t is None:
-            if not k or any(
-                c not in string.ascii_letters + string.digits + "-" + "_" for c in k
-            ):
+            if not k or any(c not in BARE for c in k):
                 t = KeyType.Basic
             else:
                 t = KeyType.Bare
@@ -1931,7 +1933,9 @@ class Table(AbstractTable):
 
         if isinstance(key, Key):
             key = next(iter(key)).key
-            _item = self._value[key]
+            # Get the stored value directly from the Container's dict,
+            # avoiding __getitem__ which would create a throwaway SingleKey.
+            _item = dict.__getitem__(self._value, key)
 
         if key is not None:
             dict.__setitem__(self, key, _item)
