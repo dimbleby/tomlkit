@@ -177,7 +177,7 @@ class Parser:
         src = self._src
 
         # Take all keyvals outside of tables/AoT's.
-        while src._idx < len(src):
+        while src._idx < src._length:
             # Break out if a table is found
             if src._current == "[":
                 break
@@ -197,7 +197,7 @@ class Parser:
 
             src._marker = src._idx
 
-        while src._idx < len(src):
+        while src._idx < src._length:
             key, value = self._parse_table()
             if isinstance(value, Table) and value.is_aot_element():
                 # This is just the first table in an AoT. Parse the rest of the array
@@ -298,7 +298,7 @@ class Parser:
         simply be empty.
         """
         src = self._src
-        if src._idx >= len(src):
+        if src._idx >= src._length:
             return "", "", ""
 
         comment = ""
@@ -317,7 +317,7 @@ class Parser:
                 src.inc()  # Skip #
 
                 # The comment itself
-                while src._idx < len(src) and src._current not in _NL:
+                while src._idx < src._length and src._current not in _NL:
                     code = ord(src._current)
                     if code == CHR_DEL or (code <= CTRL_CHAR_LIMIT and code != CTRL_I):
                         raise src.parse_error(InvalidControlChar, code, "comments")
@@ -340,7 +340,7 @@ class Parser:
             else:
                 raise src.parse_error(UnexpectedCharError, c)
 
-            if src._idx >= len(src):
+            if src._idx >= src._length:
                 break
 
         trail = ""

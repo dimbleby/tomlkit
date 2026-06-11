@@ -85,6 +85,9 @@ class Source(str):
         # Track an integer index over the underlying str (Source subclasses str):
         # init is O(1) and `inc()` just bumps the index and reads the next char,
         # instead of materializing a list of (index, char) pairs up front.
+        # Cache the length once: it is read on every `inc()` / bulk scan and
+        # never changes for an immutable str.
+        self._length = len(self)
         self._idx = -1  # pre-start sentinel; first inc() will land on 0
         self._marker = 0
         self._current: str = ""
@@ -92,13 +95,6 @@ class Source(str):
         self._state = _StateHandler(self)
 
         self.inc()
-
-    def reset(self) -> None:
-        # initialize both idx and current
-        self.inc()
-
-        # reset marker
-        self.mark()
 
     @property
     def state(self) -> _StateHandler:
@@ -129,13 +125,13 @@ class Source(str):
         """
         # Integer increment + a single str index, no iterator / StopIteration triage.
         next_idx = self._idx + 1
-        if next_idx < len(self):
+        if next_idx < self._length:
             self._idx = next_idx
             self._current = self[next_idx]
             return True
 
         # Past end : pin to len, switch current to EOF, raise if asked.
-        self._idx = len(self)
+        self._idx = self._length
         self._current = self.EOF
         if exception:
             raise self.parse_error(exception) from None
@@ -152,7 +148,7 @@ class Source(str):
         character, ``False`` at EOF — the same value contract as the loop.
         """
         i = self._idx
-        n = len(self)
+        n = self._length
         while i < n and self[i] in charset:
             i += 1
         if i < n:
@@ -172,7 +168,7 @@ class Source(str):
         EOF), with the same return-value contract.
         """
         i = self._idx
-        n = len(self)
+        n = self._length
         while i < n and self[i] not in stopset:
             i += 1
         if i < n:
@@ -208,7 +204,7 @@ class Source(str):
         """
         Returns True if the parser has reached the end of the input.
         """
-        return self._idx >= len(self)
+        return self._idx >= self._length
 
     def mark(self) -> None:
         """
